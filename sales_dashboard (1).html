@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acme Corp — Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f4f3ef;
+    color: #0b0b0b;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  .dash { max-width: 960px; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .brand-name { font-size: 16px; font-weight: 500; color: #0b0b0b; display: flex; align-items: center; gap: 8px; }
+  .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: #2a78d6; display: inline-block; }
+  .brand-sub { font-size: 12px; color: #52514e; margin-top: 3px; padding-left: 16px; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .badge-live { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; background: #eaf3de; color: #27500a; }
+  .q-btns { display: flex; gap: 4px; }
+  .q-btn {
+    font-size: 12px; padding: 5px 12px; border-radius: 8px;
+    border: 1px solid rgba(11,11,11,0.15); background: #fff;
+    color: #52514e; cursor: pointer; transition: all .15s;
+    font-family: inherit;
+  }
+  .q-btn:hover { background: #f0efec; color: #0b0b0b; }
+  .q-btn.active { background: #2a78d6; color: #fff; border-color: #2a78d6; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .kpi { background: #ebebea; border-radius: 8px; padding: 14px 16px; transition: .2s; }
+  .kpi-label { font-size: 11px; color: #52514e; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .kpi-value { font-size: 24px; font-weight: 500; color: #0b0b0b; margin-bottom: 5px; }
+  .kpi-delta { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .up { color: #27500a; } .dn { color: #791f1f; }
+  .row2 { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); gap: 12px; margin-bottom: 12px; }
+  .row3 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .card { background: #fff; border: 1px solid rgba(11,11,11,0.10); border-radius: 12px; padding: 1rem 1.25rem; }
+  .card-title { font-size: 13px; font-weight: 500; color: #0b0b0b; margin-bottom: 3px; }
+  .card-sub { font-size: 12px; color: #52514e; margin-bottom: 1rem; }
+  .legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #52514e; }
+  .leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .chart-wrap { position: relative; width: 100%; height: 210px; }
+  .rep-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(11,11,11,0.08); }
+  .rep-row:last-child { border-bottom: none; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #e6f1fb; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: #0c447c; flex-shrink: 0; }
+  .rep-name { font-size: 13px; color: #0b0b0b; font-weight: 500; margin-bottom: 4px; }
+  .rep-meta { display: flex; align-items: center; gap: 8px; }
+  .bar-track { flex: 1; background: #f0efec; border-radius: 4px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; background: #2a78d6; transition: width .4s ease; }
+  .rep-val { font-size: 12px; color: #52514e; white-space: nowrap; }
+  .pipe-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid rgba(11,11,11,0.08); gap: 12px; }
+  .pipe-row:last-child { border-bottom: none; }
+  .pipe-name { font-size: 13px; color: #0b0b0b; margin-bottom: 2px; }
+  .pipe-count { font-size: 11px; color: #52514e; }
+  .pipe-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .pipe-bar-track { width: 72px; background: #f0efec; border-radius: 4px; height: 5px; }
+  .pipe-bar-fill { height: 5px; border-radius: 4px; background: #2a78d6; transition: width .4s ease; }
+  .pipe-val { font-size: 13px; font-weight: 500; color: #0b0b0b; min-width: 46px; text-align: right; }
+  .footer { text-align: center; font-size: 12px; color: #898781; padding-top: 0.75rem; border-top: 1px solid rgba(11,11,11,0.08); }
+  .footer span { color: #2a78d6; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="dash">
+
+  <div class="topbar">
+    <div>
+      <p class="brand-name"><span class="brand-dot"></span> Acme Corp — sales overview</p>
+      <p class="brand-sub" id="period-label">Q2 2025 &nbsp;·&nbsp; Updated live</p>
+    </div>
+    <div class="topbar-right">
+      <span class="badge-live">● Live</span>
+      <div class="q-btns">
+        <button class="q-btn" onclick="setQuarter('Q4 2024')">Q4 2024</button>
+        <button class="q-btn" onclick="setQuarter('Q1 2025')">Q1 2025</button>
+        <button class="q-btn active" onclick="setQuarter('Q2 2025')">Q2 2025</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <p class="kpi-label">Total revenue</p>
+      <p class="kpi-value" id="k-revenue">$4.82M</p>
+      <p class="kpi-delta" id="k-revenue-d"></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Deals closed</p>
+      <p class="kpi-value" id="k-deals">247</p>
+      <p class="kpi-delta" id="k-deals-d"></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Avg deal size</p>
+      <p class="kpi-value" id="k-avg">$19.5K</p>
+      <p class="kpi-delta" id="k-avg-d"></p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Win rate</p>
+      <p class="kpi-value" id="k-win">38%</p>
+      <p class="kpi-delta" id="k-win-d"></p>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="card">
+      <p class="card-title">Monthly revenue</p>
+      <p class="card-sub" id="chart-sub">Actual vs target — Q2 2025</p>
+      <div class="legend">
+        <span class="leg-item"><span class="leg-sq" style="background:#2a78d6;"></span>Actual</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#c3c2b7;border:1px dashed #888;"></span>Target</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="revChart" role="img" aria-label="Monthly revenue vs target bar chart">Monthly revenue vs target.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title">Revenue by region</p>
+      <p class="card-sub" id="region-sub">Q2 2025 distribution</p>
+      <div class="legend">
+        <span class="leg-item"><span class="leg-sq" style="background:#2a78d6;"></span>North</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#1baf7a;"></span>South</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#eda100;"></span>East</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#888780;"></span>West</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="regionChart" role="img" aria-label="Donut chart of revenue by region">Regional revenue breakdown.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="row3">
+    <div class="card">
+      <p class="card-title">Top sales reps</p>
+      <p class="card-sub">By revenue closed</p>
+      <div id="reps"></div>
+    </div>
+    <div class="card">
+      <p class="card-title">Deal pipeline</p>
+      <p class="card-sub">Active deals by stage</p>
+      <div id="pipeline"></div>
+    </div>
+  </div>
+
+  <p class="footer">Built with AI-powered data visualization &nbsp;·&nbsp; <span>Ging — freelance data analyst</span></p>
+</div>
+
+<script>
+const DATA = {
+  'Q4 2024': {
+    kpis: {
+      revenue: '$3.91M', revDelta: { val: '+9.2% vs Q3', up: true },
+      deals: '201',     dealsDelta: { val: '+8 vs Q3', up: true },
+      avg: '$19.5K',    avgDelta: { val: '+2.1% vs Q3', up: true },
+      win: '35%',       winDelta: { val: '+1pt vs Q3', up: true },
+    },
+    months: ['Jul','Aug','Sep','Oct','Nov','Dec'],
+    actual: [510,540,580,620,680,780],
+    target: [550,550,620,620,700,700],
+    region: [35,30,22,13],
+    reps: [
+      { initials:'MS', name:'Maria S.',  val:'$701K', pct:100 },
+      { initials:'JT', name:'James T.',  val:'$634K', pct:90  },
+      { initials:'CW', name:'Chen W.',   val:'$572K', pct:82  },
+      { initials:'PN', name:'Priya N.',  val:'$498K', pct:71  },
+      { initials:'CR', name:'Carlos R.', val:'$430K', pct:61  },
+    ],
+    pipeline: [
+      { name:'Prospecting',  count:'71 deals', val:'$990K',  pct:100 },
+      { name:'Qualified',    count:'44 deals', val:'$820K',  pct:83  },
+      { name:'Proposal',     count:'26 deals', val:'$600K',  pct:61  },
+      { name:'Negotiation',  count:'14 deals', val:'$430K',  pct:43  },
+      { name:'Closed won',   count:'7 deals',  val:'$260K',  pct:26  },
+    ],
+  },
+  'Q1 2025': {
+    kpis: {
+      revenue: '$4.07M', revDelta: { val: '+4.1% vs Q4', up: true },
+      deals: '235',      dealsDelta: { val: '+34 vs Q4', up: true },
+      avg: '$17.3K',     avgDelta: { val: '-11.3% vs Q4', up: false },
+      win: '40%',        winDelta: { val: '+5pts vs Q4', up: true },
+    },
+    months: ['Jan','Feb','Mar'],
+    actual: [1180,1380,1510],
+    target: [1100,1300,1400],
+    region: [40,25,20,15],
+    reps: [
+      { initials:'MS', name:'Maria S.',  val:'$720K', pct:100 },
+      { initials:'CW', name:'Chen W.',   val:'$658K', pct:91  },
+      { initials:'JT', name:'James T.',  val:'$601K', pct:83  },
+      { initials:'CR', name:'Carlos R.', val:'$550K', pct:76  },
+      { initials:'PN', name:'Priya N.',  val:'$541K', pct:75  },
+    ],
+    pipeline: [
+      { name:'Prospecting',  count:'78 deals', val:'$1.1M', pct:100 },
+      { name:'Qualified',    count:'48 deals', val:'$900K', pct:82  },
+      { name:'Proposal',     count:'28 deals', val:'$680K', pct:62  },
+      { name:'Negotiation',  count:'16 deals', val:'$500K', pct:45  },
+      { name:'Closed won',   count:'8 deals',  val:'$280K', pct:25  },
+    ],
+  },
+  'Q2 2025': {
+    kpis: {
+      revenue: '$4.82M', revDelta: { val: '+18.4% vs Q1', up: true },
+      deals: '247',      dealsDelta: { val: '+12 vs Q1', up: true },
+      avg: '$19.5K',     avgDelta: { val: '+5.2% vs Q1', up: true },
+      win: '38%',        winDelta: { val: '-2pts vs Q1', up: false },
+    },
+    months: ['Apr','May','Jun'],
+    actual: [1520,1680,1620],
+    target: [1400,1600,1600],
+    region: [38,27,21,14],
+    reps: [
+      { initials:'MS', name:'Maria S.',  val:'$842K', pct:100 },
+      { initials:'JT', name:'James T.',  val:'$761K', pct:90  },
+      { initials:'CW', name:'Chen W.',   val:'$698K', pct:83  },
+      { initials:'PN', name:'Priya N.',  val:'$615K', pct:73  },
+      { initials:'CR', name:'Carlos R.', val:'$541K', pct:64  },
+    ],
+    pipeline: [
+      { name:'Prospecting',  count:'84 deals', val:'$1.2M', pct:100 },
+      { name:'Qualified',    count:'52 deals', val:'$980K', pct:78  },
+      { name:'Proposal',     count:'31 deals', val:'$720K', pct:58  },
+      { name:'Negotiation',  count:'18 deals', val:'$540K', pct:43  },
+      { name:'Closed won',   count:'9 deals',  val:'$310K', pct:25  },
+    ],
+  },
+};
+
+let revChart, regionChart;
+
+function buildCharts(q) {
+  const d = DATA[q];
+
+  if (revChart) revChart.destroy();
+  revChart = new Chart(document.getElementById('revChart'), {
+    type: 'bar',
+    data: {
+      labels: d.months,
+      datasets: [
+        { label:'Actual', data: d.actual, backgroundColor:'#2a78d6', borderRadius:4, borderSkipped:false },
+        { label:'Target', data: d.target, backgroundColor:'rgba(136,135,128,0.2)', borderRadius:4, borderSkipped:false, borderWidth:1, borderColor:'#888780' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ' $'+ctx.raw+'K' } } },
+      scales: {
+        x: { grid:{ display:false }, ticks:{ color:'#898781', font:{ size:11 } }, border:{ display:false } },
+        y: { grid:{ color:'rgba(136,135,128,0.15)' }, ticks:{ color:'#898781', font:{ size:11 }, callback: v=>'$'+v+'K' }, border:{ display:false } }
+      }
+    }
+  });
+
+  if (regionChart) regionChart.destroy();
+  regionChart = new Chart(document.getElementById('regionChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['North','South','East','West'],
+      datasets: [{ data: d.region, backgroundColor:['#2a78d6','#1baf7a','#eda100','#888780'], borderWidth:0, hoverOffset:4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout:'68%',
+      plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx=>' '+ctx.label+': '+ctx.raw+'%' } } }
+    }
+  });
+}
+
+function buildReps(q) {
+  const el = document.getElementById('reps');
+  el.innerHTML = '';
+  DATA[q].reps.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'rep-row';
+    div.innerHTML = `<div class="avatar">${r.initials}</div>
+      <div style="flex:1;min-width:0;">
+        <p class="rep-name">${r.name}</p>
+        <div class="rep-meta">
+          <div class="bar-track"><div class="bar-fill" style="width:${r.pct}%;"></div></div>
+          <span class="rep-val">${r.val}</span>
+        </div>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+function buildPipeline(q) {
+  const el = document.getElementById('pipeline');
+  el.innerHTML = '';
+  DATA[q].pipeline.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'pipe-row';
+    div.innerHTML = `<div><p class="pipe-name">${s.name}</p><p class="pipe-count">${s.count}</p></div>
+      <div class="pipe-right">
+        <div class="pipe-bar-track"><div class="pipe-bar-fill" style="width:${s.pct}%;"></div></div>
+        <p class="pipe-val">${s.val}</p>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+function buildKPIs(q) {
+  const k = DATA[q].kpis;
+  document.getElementById('k-revenue').textContent = k.revenue;
+  document.getElementById('k-deals').textContent   = k.deals;
+  document.getElementById('k-avg').textContent     = k.avg;
+  document.getElementById('k-win').textContent     = k.win;
+
+  function setDelta(id, d) {
+    const el = document.getElementById(id);
+    el.textContent = (d.up ? '↑ ' : '↓ ') + d.val;
+    el.className = 'kpi-delta ' + (d.up ? 'up' : 'dn');
+  }
+  setDelta('k-revenue-d', k.revDelta);
+  setDelta('k-deals-d',   k.dealsDelta);
+  setDelta('k-avg-d',     k.avgDelta);
+  setDelta('k-win-d',     k.winDelta);
+}
+
+function setQuarter(q) {
+  document.querySelectorAll('.q-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === q);
+  });
+  document.getElementById('period-label').innerHTML = q + ' &nbsp;·&nbsp; Updated live';
+  document.getElementById('chart-sub').textContent = 'Actual vs target — ' + q;
+  document.getElementById('region-sub').textContent = q + ' distribution';
+
+  buildKPIs(q);
+  buildCharts(q);
+  buildReps(q);
+  buildPipeline(q);
+}
+
+setQuarter('Q2 2025');
+</script>
+</body>
+</html>
