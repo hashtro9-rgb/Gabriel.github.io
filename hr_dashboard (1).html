@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f0ed;color:#111;min-height:100vh;padding:1.5rem;}
+.dash{max-width:1100px;margin:0 auto;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-icon{width:36px;height:36px;background:#1a56db;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;flex-shrink:0;}
+.brand-title{font-size:17px;font-weight:600;color:#111;}
+.brand-sub{font-size:12px;color:#666;margin-top:2px;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;}
+.badge-live{background:#dcfce7;color:#166534;}
+.dept-btns{display:flex;gap:4px;flex-wrap:wrap;}
+.dept-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#555;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap;}
+.dept-btn:hover{background:#f3f4f6;color:#111;}
+.dept-btn.active{background:#1a56db;color:#fff;border-color:#1a56db;}
+
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:1.25rem;}
+.kpi{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb;}
+.kpi-icon{font-size:18px;margin-bottom:8px;}
+.kpi-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.kpi-value{font-size:22px;font-weight:700;color:#111;margin-bottom:3px;}
+.kpi-delta{font-size:12px;}
+.up{color:#166534;} .dn{color:#991b1b;} .nu{color:#6b7280;}
+
+.row2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:12px;margin-bottom:12px;}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px;}
+.row2b{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px;margin-bottom:12px;}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem;}
+.card-title{font-size:13px;font-weight:600;color:#111;margin-bottom:2px;}
+.card-sub{font-size:12px;color:#6b7280;margin-bottom:1rem;}
+.chart-wrap{position:relative;width:100%;height:200px;}
+.chart-wrap-lg{position:relative;width:100%;height:220px;}
+
+.legend{display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;}
+.leg-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+/* INSIGHT BUTTON & BOX */
+.insight-toggle{display:flex;align-items:center;gap:6px;margin-top:12px;padding:7px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:11px;font-weight:600;color:#374151;cursor:pointer;width:100%;text-align:left;font-family:inherit;transition:background .15s;letter-spacing:.04em;text-transform:uppercase;}
+.insight-toggle:hover{background:#f3f4f6;border-color:#d1d5db;}
+.insight-toggle .arrow{margin-left:auto;transition:transform .25s;font-size:10px;color:#9ca3af;}
+.insight-toggle.open .arrow{transform:rotate(180deg);}
+.insight-box{display:none;margin-top:8px;padding:14px 16px;background:#fafafa;border-left:3px solid #1a56db;border-radius:0 8px 8px 0;font-size:12px;color:#374151;line-height:1.8;}
+.insight-box.open{display:block;}
+.insight-box strong{color:#111;font-weight:600;display:block;margin-bottom:6px;}
+.insight-box ul{padding-left:16px;margin-top:4px;}
+.insight-box li{margin-bottom:5px;color:#4b5563;}
+
+.perf-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f3f4f6;}
+.perf-row:last-child{border-bottom:none;}
+.perf-label{font-size:12px;color:#374151;width:90px;flex-shrink:0;}
+.perf-track{flex:1;background:#f3f4f6;border-radius:4px;height:7px;}
+.perf-fill{height:100%;border-radius:4px;transition:width .5s ease;}
+.perf-val{font-size:12px;color:#6b7280;width:36px;text-align:right;flex-shrink:0;}
+
+.sal-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f3f4f6;}
+.sal-row:last-child{border-bottom:none;}
+.sal-dept{font-size:11px;color:#374151;width:110px;flex-shrink:0;font-weight:500;}
+.sal-track{flex:1;background:#f3f4f6;border-radius:4px;height:6px;}
+.sal-fill{height:100%;border-radius:4px;background:#1a56db;transition:width .5s ease;}
+.sal-val{font-size:11px;color:#6b7280;width:50px;text-align:right;flex-shrink:0;}
+
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{background:#f9fafb;border-bottom:2px solid #e5e7eb;}
+th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+tbody tr{border-bottom:1px solid #f3f4f6;transition:background .1s;}
+tbody tr:hover{background:#f9fafb;}
+td{padding:8px 10px;color:#111;white-space:nowrap;}
+.status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;}
+.s-active{background:#dcfce7;color:#166534;}
+.s-contract{background:#dbeafe;color:#1e40af;}
+.s-onleave{background:#fef9c3;color:#854d0e;}
+.s-inactive{background:#f3f4f6;color:#374151;}
+.s-terminated{background:#fee2e2;color:#991b1b;}
+
+.footer{text-align:center;font-size:12px;color:#9ca3af;padding-top:.75rem;border-top:1px solid #e5e7eb;margin-top:4px;}
+.footer span{color:#1a56db;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="dash">
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">HR</div>
+    <div>
+      <p class="brand-title">Workforce Analytics Dashboard</p>
+      <p class="brand-sub">4,611 employees &nbsp;·&nbsp; 10 departments &nbsp;·&nbsp; FY 2025</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="badge badge-live">● Live Data</span>
+    <div class="dept-btns">
+      <button class="dept-btn active" onclick="setDept('ALL',this)">All Departments</button>
+      <button class="dept-btn" onclick="setDept('IT',this)">IT</button>
+      <button class="dept-btn" onclick="setDept('SALES',this)">Sales</button>
+      <button class="dept-btn" onclick="setDept('ENGINEERING',this)">Engineering</button>
+      <button class="dept-btn" onclick="setDept('PRODUCT',this)">Product</button>
+      <button class="dept-btn" onclick="setDept('FINANCE',this)">Finance</button>
+      <button class="dept-btn" onclick="setDept('HR',this)">HR</button>
+      <button class="dept-btn" onclick="setDept('MARKETING',this)">Marketing</button>
+      <button class="dept-btn" onclick="setDept('OPERATIONS',this)">Operations</button>
+      <button class="dept-btn" onclick="setDept('LEGAL',this)">Legal</button>
+      <button class="dept-btn" onclick="setDept('CUSTOMER SERVICE',this)">Cust. Service</button>
+    </div>
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi">
+        <p class="kpi-label">Total headcount</p>
+    <p class="kpi-value" id="k-head">4,611</p>
+    <p class="kpi-delta nu" id="k-head-d">Across 10 departments</p>
+  </div>
+  <div class="kpi">
+        <p class="kpi-label">Active employees</p>
+    <p class="kpi-value" id="k-active">1,234</p>
+    <p class="kpi-delta up" id="k-active-d">↑ 26.8% of workforce</p>
+  </div>
+  <div class="kpi">
+        <p class="kpi-label">Avg salary</p>
+    <p class="kpi-value" id="k-sal">$93.8K</p>
+    <p class="kpi-delta nu" id="k-sal-d">Positive salaries only</p>
+  </div>
+  <div class="kpi">
+        <p class="kpi-label">Termination rate</p>
+    <p class="kpi-value" id="k-term">18.0%</p>
+    <p class="kpi-delta dn" id="k-term-d">↓ Marketing highest 21.4%</p>
+  </div>
+  <div class="kpi">
+        <p class="kpi-label">Top performers</p>
+    <p class="kpi-value" id="k-perf">702</p>
+    <p class="kpi-delta up" id="k-perf-d">↑ Excellent + Outstanding</p>
+  </div>
+</div>
+
+<div class="row2">
+  <div class="card">
+    <p class="card-title">Headcount by department</p>
+    <p class="card-sub" id="hc-sub">All departments — employee distribution</p>
+    <div class="chart-wrap-lg"><canvas id="headcountChart"></canvas></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-headcount',this)">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-headcount">
+      <strong>Headcount Distribution Analysis</strong>
+      <ul>
+        <li>IT leads with <strong>514 employees (11.1%)</strong> of total headcount, reflecting the organization's strong emphasis on technical infrastructure and digital operations.</li>
+        <li>Sales follows closely at <strong>503 employees</strong>, consistent with a revenue-driven organizational structure.</li>
+        <li>Legal is the leanest department at <strong>431 employees</strong>, suggesting a lean compliance model likely supplemented by external counsel.</li>
+        <li>The distribution is relatively balanced across all 10 departments, with a variance of only <strong>83 employees</strong> between the largest and smallest, indicating deliberate workforce planning.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <p class="card-title">Employment status</p>
+    <p class="card-sub" id="status-sub">Workforce status breakdown</p>
+    <div class="legend">
+      <span class="leg"><span class="leg-sq" style="background:#166534;"></span>Active</span>
+      <span class="leg"><span class="leg-sq" style="background:#1e40af;"></span>Contract</span>
+      <span class="leg"><span class="leg-sq" style="background:#854d0e;"></span>On Leave</span>
+      <span class="leg"><span class="leg-sq" style="background:#374151;"></span>Inactive</span>
+      <span class="leg"><span class="leg-sq" style="background:#991b1b;"></span>Terminated</span>
+    </div>
+    <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-status',this)">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-status">
+      <strong>Employment Status Analysis</strong>
+      <ul>
+        <li>Only <strong>26.8% of the workforce is actively employed</strong>, which is notably low and warrants further investigation into reclassification practices or data quality.</li>
+        <li><strong>Contract workers (18.3%)</strong> and employees on leave (18.2%) together constitute over a third of the workforce, suggesting high operational dependency on non-permanent arrangements.</li>
+        <li>The <strong>18.8% inactive rate</strong> may indicate employees pending reactivation, on extended leave, or awaiting offboarding — a segment that should be audited for cost implications.</li>
+        <li>The <strong>18.0% termination rate</strong> aligns with industry averages but signals ongoing attrition that, if unmanaged, could strain recruitment pipelines.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="row3">
+  <div class="card">
+    <p class="card-title">Performance distribution</p>
+    <p class="card-sub" id="perf-sub">Rating breakdown across workforce</p>
+    <div id="perfBars"></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-perf',this)" style="margin-top:16px;">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-perf">
+      <strong>Performance Rating Analysis</strong>
+      <ul>
+        <li><strong>Poor ratings account for 53.5% of all rated employees</strong> — a critical signal that either performance standards are misaligned, rating criteria are inconsistent, or genuine capability gaps exist across the workforce.</li>
+        <li>Only <strong>15.2% of employees are rated Outstanding or Excellent</strong>, which may limit the internal talent pipeline for leadership succession.</li>
+        <li><strong>341 employees (7.4%) have no performance rating</strong> on record, a data gap that undermines the reliability of performance-based decisions.</li>
+        <li>The high poor-rating concentration warrants a structured review of performance management frameworks and manager calibration sessions.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <p class="card-title">Avg salary by department</p>
+    <p class="card-sub">Positive salaries only — ranked highest to lowest</p>
+    <div id="salBars"></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-sal',this)" style="margin-top:16px;">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-sal">
+      <strong>Salary Distribution Analysis</strong>
+      <ul>
+        <li><strong>Product commands the highest average salary at $112,982</strong>, a 32% premium over the lowest-paid department, reflecting competitive market rates for product management and strategy roles.</li>
+        <li><strong>Engineering follows at $102,007</strong>, consistent with prevailing technical talent market pressures and the scarcity of specialized skills.</li>
+        <li><strong>Operations and IT report the lowest averages</strong> at $85,578 and $87,540 respectively — departments that may face retention risk if compensation is not periodically benchmarked against industry standards.</li>
+        <li>Note: <strong>106 negative salary entries</strong> were excluded from this analysis, indicating data entry errors in the source system that should be corrected.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <p class="card-title">Hiring trend</p>
+    <p class="card-sub">New hires per year 2015–2024</p>
+    <div class="chart-wrap"><canvas id="hireChart"></canvas></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-hire',this)">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-hire">
+      <strong>Hiring Trend Analysis</strong>
+      <ul>
+        <li>Hiring volume remained <strong>remarkably stable between 2015 and 2023</strong>, averaging approximately 378 new hires annually — indicative of consistent organizational growth planning.</li>
+        <li>A <strong>sharp decline to 226 hires in 2024 (−40.4% YoY)</strong> represents the most significant hiring contraction in the observed period and may signal a hiring freeze, budget constraints, or a strategic pivot toward workforce optimization.</li>
+        <li>The 2019–2020 dip to <strong>365–367 hires</strong> may partially reflect pandemic-related hiring slowdowns, though the organization recovered quickly in 2021.</li>
+        <li>The 2024 contraction should be monitored closely — if sustained, it may create future capacity gaps particularly in high-turnover departments.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="row2b">
+  <div class="card">
+    <p class="card-title">Termination & active rate by department</p>
+    <p class="card-sub">% of department headcount</p>
+    <div class="legend">
+      <span class="leg"><span class="leg-sq" style="background:#1a56db;"></span>Active %</span>
+      <span class="leg"><span class="leg-sq" style="background:#dc2626;"></span>Terminated %</span>
+    </div>
+    <div class="chart-wrap"><canvas id="termChart"></canvas></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-term',this)">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-term">
+      <strong>Attrition & Retention Analysis</strong>
+      <ul>
+        <li><strong>Marketing has the highest termination rate at 21.4%</strong>, exceeding the organizational average by 3.4 percentage points — a potential indicator of role misalignment, compensation dissatisfaction, or cultural fit issues within the department.</li>
+        <li><strong>Operations records the lowest termination rate at 14.3%</strong>, suggesting stronger retention practices or role stability within that function.</li>
+        <li>Despite being the most actively staffed department, <strong>Sales active rate (28.2%) contrasts with an 18.3% termination rate</strong> — a pattern consistent with high-velocity sales environments where turnover is structurally elevated.</li>
+        <li><strong>HR department's active rate of 23.1% is the lowest</strong> among all departments, which is worth noting given that HR is typically responsible for driving retention initiatives organization-wide.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <p class="card-title">Performance by department</p>
+    <p class="card-sub">Stacked rating breakdown per department</p>
+    <div class="legend">
+      <span class="leg"><span class="leg-sq" style="background:#166534;"></span>Outstanding</span>
+      <span class="leg"><span class="leg-sq" style="background:#1a56db;"></span>Excellent</span>
+      <span class="leg"><span class="leg-sq" style="background:#854d0e;"></span>Good</span>
+      <span class="leg"><span class="leg-sq" style="background:#374151;"></span>Average</span>
+      <span class="leg"><span class="leg-sq" style="background:#991b1b;"></span>Poor</span>
+    </div>
+    <div class="chart-wrap"><canvas id="perfDeptChart"></canvas></div>
+    <button class="insight-toggle"  onclick="toggleInsight('ins-perfdept',this)">
+      Insight <span class="arrow">▼</span>
+    </button>
+    <div class="insight-box" id="ins-perfdept">
+      <strong>Departmental Performance Breakdown</strong>
+      <ul>
+        <li><strong>Poor ratings dominate across all departments</strong>, with IT recording the highest absolute count at 292 — suggesting that performance issues are systemic rather than isolated to a single function.</li>
+        <li><strong>Engineering has the highest combined Outstanding + Excellent count (81)</strong>, making it the strongest performing department relative to its size and indicating effective performance management practices.</li>
+        <li><strong>HR shows the highest Average rating count (97)</strong> despite being positioned as a people-management function — a potential concern for the department expected to model high performance standards.</li>
+        <li>The near-uniform distribution of Poor ratings across all departments suggests a possible <strong>calibration issue in the rating system</strong> rather than uniformly underperforming employees, warranting a review of rating criteria and manager training.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <p class="card-title">Department summary table</p>
+  <p class="card-sub" id="table-sub">Key metrics per department — click a department above to filter</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Department</th><th>Headcount</th><th>Active</th><th>Contract</th>
+          <th>On Leave</th><th>Terminated</th><th>Avg Salary</th>
+          <th>Top Performers</th><th>Term Rate</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <button class="insight-toggle"  onclick="toggleInsight('ins-table',this)" style="margin-top:12px;">
+    Insight <span class="arrow">▼</span>
+  </button>
+  <div class="insight-box" id="ins-table">
+    <strong>Cross-Department Summary Analysis</strong>
+    <ul>
+      <li><strong>Product stands out as the highest-compensated and highest-headcount-efficiency department</strong>, with the fewest poor performers relative to its pay premium — suggesting strong alignment between compensation and output.</li>
+      <li><strong>Finance and Marketing carry the two highest termination rates (19.6% and 21.4%)</strong> while also showing below-average top-performer counts, indicating a potential link between low engagement and elevated attrition.</li>
+      <li><strong>Operations demonstrates the strongest retention profile</strong> with the lowest termination rate (14.3%) and a balanced status distribution — a model worth examining for best practices in workforce stability.</li>
+      <li>Across all departments, the <strong>ratio of top performers to terminated employees is unfavorable</strong>, with terminated counts consistently exceeding Outstanding + Excellent combined — reinforcing the case for targeted performance development investment.</li>
+    </ul>
+  </div>
+</div>
+
+<p class="footer">Built with AI-powered data visualization &nbsp;·&nbsp; <span>Ging — freelance data analyst</span></p>
+</div>
+
+<script>
+const ALL_DATA = {
+  depts:['CUSTOMER SERVICE','ENGINEERING','FINANCE','HR','IT','LEGAL','MARKETING','OPERATIONS','PRODUCT','SALES'],
+  headcount:[449,465,450,459,514,431,435,440,465,503],
+  status:{
+    ALL:{ACTIVE:1234,CONTRACT:842,ON_LEAVE:840,INACTIVE:865,TERMINATED:829},
+    'CUSTOMER SERVICE':{ACTIVE:119,CONTRACT:81,ON_LEAVE:69,INACTIVE:101,TERMINATED:79},
+    'ENGINEERING':{ACTIVE:130,CONTRACT:75,ON_LEAVE:85,INACTIVE:90,TERMINATED:85},
+    'FINANCE':{ACTIVE:118,CONTRACT:91,ON_LEAVE:91,INACTIVE:62,TERMINATED:88},
+    'HR':{ACTIVE:106,CONTRACT:85,ON_LEAVE:91,INACTIVE:99,TERMINATED:78},
+    'IT':{ACTIVE:143,CONTRACT:89,ON_LEAVE:96,INACTIVE:98,TERMINATED:87},
+    'LEGAL':{ACTIVE:110,CONTRACT:84,ON_LEAVE:81,INACTIVE:82,TERMINATED:74},
+    'MARKETING':{ACTIVE:122,CONTRACT:87,ON_LEAVE:74,INACTIVE:59,TERMINATED:93},
+    'OPERATIONS':{ACTIVE:122,CONTRACT:77,ON_LEAVE:95,INACTIVE:83,TERMINATED:63},
+    'PRODUCT':{ACTIVE:122,CONTRACT:90,ON_LEAVE:77,INACTIVE:86,TERMINATED:90},
+    'SALES':{ACTIVE:142,CONTRACT:83,ON_LEAVE:81,INACTIVE:105,TERMINATED:92},
+  },
+  perf:{
+    ALL:{OUTSTANDING:355,EXCELLENT:347,GOOD:324,AVERAGE:778,POOR:2466},
+    'CUSTOMER SERVICE':{OUTSTANDING:30,EXCELLENT:28,GOOD:30,AVERAGE:83,POOR:243},
+    'ENGINEERING':{OUTSTANDING:42,EXCELLENT:39,GOOD:33,AVERAGE:67,POOR:249},
+    'FINANCE':{OUTSTANDING:38,EXCELLENT:32,GOOD:27,AVERAGE:89,POOR:229},
+    'HR':{OUTSTANDING:36,EXCELLENT:40,GOOD:31,AVERAGE:97,POOR:221},
+    'IT':{OUTSTANDING:33,EXCELLENT:40,GOOD:28,AVERAGE:89,POOR:292},
+    'LEGAL':{OUTSTANDING:35,EXCELLENT:32,GOOD:29,AVERAGE:81,POOR:222},
+    'MARKETING':{OUTSTANDING:30,EXCELLENT:30,GOOD:34,AVERAGE:74,POOR:233},
+    'OPERATIONS':{OUTSTANDING:38,EXCELLENT:33,GOOD:32,AVERAGE:58,POOR:248},
+    'PRODUCT':{OUTSTANDING:36,EXCELLENT:35,GOOD:40,AVERAGE:69,POOR:248},
+    'SALES':{OUTSTANDING:37,EXCELLENT:38,GOOD:40,AVERAGE:71,POOR:281},
+  },
+  salary:{'CUSTOMER SERVICE':95056,'ENGINEERING':102007,'FINANCE':93050,'HR':94427,'IT':87540,'LEGAL':88593,'MARKETING':89827,'OPERATIONS':85578,'PRODUCT':112982,'SALES':89082},
+  termRate:{'CUSTOMER SERVICE':17.6,'ENGINEERING':18.3,'FINANCE':19.6,'HR':17.0,'IT':16.9,'LEGAL':17.2,'MARKETING':21.4,'OPERATIONS':14.3,'PRODUCT':19.4,'SALES':18.3},
+  activeRate:{'CUSTOMER SERVICE':26.5,'ENGINEERING':28.0,'FINANCE':26.2,'HR':23.1,'IT':27.8,'LEGAL':25.5,'MARKETING':28.0,'OPERATIONS':27.7,'PRODUCT':26.2,'SALES':28.2},
+  hireYears:[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024],
+  hireCount:[380,383,377,381,365,367,382,374,379,226],
+};
+
+function toggleInsight(id, btn){
+  const box = document.getElementById(id);
+  box.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
+let headChart, statusChart, hireChart, termChart, perfDeptChart;
+
+function fmt(n){return '$'+(n/1000).toFixed(1)+'K';}
+
+function buildHeadcount(dept){
+  const colors = ALL_DATA.depts.map(d=>d===dept?'#1a56db':dept==='ALL'?'#1a56db':'#d1d5db');
+  if(headChart)headChart.destroy();
+  headChart=new Chart(document.getElementById('headcountChart'),{
+    type:'bar',
+    data:{labels:ALL_DATA.depts.map(d=>d.length>12?d.slice(0,12)+'…':d),
+      datasets:[{data:ALL_DATA.headcount,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.raw+' employees'}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10}}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#9ca3af',font:{size:10}},border:{display:false}}}}
+  });
+}
+
+function buildStatus(dept){
+  const s=ALL_DATA.status[dept==='ALL'?'ALL':dept]||ALL_DATA.status['ALL'];
+  if(statusChart)statusChart.destroy();
+  statusChart=new Chart(document.getElementById('statusChart'),{
+    type:'doughnut',
+    data:{labels:['Active','Contract','On Leave','Inactive','Terminated'],
+      datasets:[{data:[s.ACTIVE,s.CONTRACT,s.ON_LEAVE,s.INACTIVE,s.TERMINATED],
+        backgroundColor:['#166534','#1e40af','#854d0e','#374151','#991b1b'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw}}}}
+  });
+}
+
+function buildPerfBars(dept){
+  const p=ALL_DATA.perf[dept==='ALL'?'ALL':dept]||ALL_DATA.perf['ALL'];
+  const total=Object.values(p).reduce((a,b)=>a+b,0);
+  const items=[
+    {label:'Outstanding',val:p.OUTSTANDING,color:'#166534'},
+    {label:'Excellent',val:p.EXCELLENT,color:'#1a56db'},
+    {label:'Good',val:p.GOOD,color:'#854d0e'},
+    {label:'Average',val:p.AVERAGE,color:'#374151'},
+    {label:'Poor',val:p.POOR,color:'#991b1b'},
+  ];
+  const el=document.getElementById('perfBars');
+  el.innerHTML='';
+  items.forEach(i=>{
+    const pct=total>0?Math.round(i.val/total*100):0;
+    el.innerHTML+=`<div class="perf-row"><span class="perf-label">${i.label}</span><div class="perf-track"><div class="perf-fill" style="width:${pct}%;background:${i.color};"></div></div><span class="perf-val">${i.val}</span></div>`;
+  });
+}
+
+function buildSalBars(){
+  const maxSal=Math.max(...ALL_DATA.depts.map(d=>ALL_DATA.salary[d]));
+  const el=document.getElementById('salBars');
+  el.innerHTML='';
+  ALL_DATA.depts.slice().sort((a,b)=>ALL_DATA.salary[b]-ALL_DATA.salary[a]).forEach(d=>{
+    const pct=Math.round(ALL_DATA.salary[d]/maxSal*100);
+    const label=d.length>14?d.slice(0,14)+'…':d;
+    el.innerHTML+=`<div class="sal-row"><span class="sal-dept">${label}</span><div class="sal-track"><div class="sal-fill" style="width:${pct}%;"></div></div><span class="sal-val">${fmt(ALL_DATA.salary[d])}</span></div>`;
+  });
+}
+
+function buildHireTrend(){
+  if(hireChart)hireChart.destroy();
+  hireChart=new Chart(document.getElementById('hireChart'),{
+    type:'line',
+    data:{labels:ALL_DATA.hireYears,
+      datasets:[{data:ALL_DATA.hireCount,borderColor:'#1a56db',backgroundColor:'rgba(26,86,219,0.08)',
+        borderWidth:2,pointRadius:4,pointBackgroundColor:'#1a56db',fill:true,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10}}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#9ca3af',font:{size:10}},border:{display:false}}}}
+  });
+}
+
+function buildTermChart(){
+  if(termChart)termChart.destroy();
+  termChart=new Chart(document.getElementById('termChart'),{
+    type:'bar',
+    data:{labels:ALL_DATA.depts.map(d=>d.length>10?d.slice(0,10)+'…':d),
+      datasets:[
+        {label:'Active %',data:Object.values(ALL_DATA.activeRate),backgroundColor:'#1a56db',borderRadius:3},
+        {label:'Terminated %',data:Object.values(ALL_DATA.termRate),backgroundColor:'#dc2626',borderRadius:3},
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.dataset.label+': '+ctx.raw+'%'}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:9}}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#9ca3af',font:{size:10},callback:v=>v+'%'},border:{display:false}}}}
+  });
+}
+
+function buildPerfDeptChart(){
+  const ratings=['OUTSTANDING','EXCELLENT','GOOD','AVERAGE','POOR'];
+  const rColors=['#166534','#1a56db','#854d0e','#374151','#991b1b'];
+  const rLabels=['Outstanding','Excellent','Good','Average','Poor'];
+  const datasets=ratings.map((r,i)=>({
+    label:rLabels[i],
+    data:ALL_DATA.depts.map(d=>ALL_DATA.perf[d]?ALL_DATA.perf[d][r]||0:0),
+    backgroundColor:rColors[i],borderRadius:2,stack:'s'
+  }));
+  if(perfDeptChart)perfDeptChart.destroy();
+  perfDeptChart=new Chart(document.getElementById('perfDeptChart'),{
+    type:'bar',
+    data:{labels:ALL_DATA.depts.map(d=>d.length>10?d.slice(0,10)+'…':d),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:9}},stacked:true},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#9ca3af',font:{size:10}},border:{display:false},stacked:true}}}
+  });
+}
+
+function buildTable(dept){
+  const depts=dept==='ALL'?ALL_DATA.depts:[dept];
+  const el=document.getElementById('tableBody');
+  el.innerHTML='';
+  depts.forEach(d=>{
+    const s=ALL_DATA.status[d];
+    const p=ALL_DATA.perf[d];
+    const total=s?s.ACTIVE+s.CONTRACT+s.ON_LEAVE+s.INACTIVE+s.TERMINATED:0;
+    const topPerf=p?p.OUTSTANDING+p.EXCELLENT:0;
+    const tRate=total>0?((s.TERMINATED/total)*100).toFixed(1)+'%':'-';
+    el.innerHTML+=`<tr>
+      <td style="font-weight:600;">${d}</td>
+      <td>${total}</td>
+      <td><span class="status-badge s-active">${s?s.ACTIVE:0}</span></td>
+      <td><span class="status-badge s-contract">${s?s.CONTRACT:0}</span></td>
+      <td><span class="status-badge s-onleave">${s?s.ON_LEAVE:0}</span></td>
+      <td><span class="status-badge s-terminated">${s?s.TERMINATED:0}</span></td>
+      <td>${fmt(ALL_DATA.salary[d]||0)}</td>
+      <td style="color:#166534;font-weight:600;">${topPerf}</td>
+      <td style="color:#991b1b;font-weight:600;">${tRate}</td>
+    </tr>`;
+  });
+}
+
+function updateKPIs(dept){
+  if(dept==='ALL'){
+    document.getElementById('k-head').textContent='4,611';
+    document.getElementById('k-head-d').textContent='Across 10 departments';
+    document.getElementById('k-head-d').className='kpi-delta nu';
+    document.getElementById('k-active').textContent='1,234';
+    document.getElementById('k-active-d').textContent='↑ 26.8% of workforce';
+    document.getElementById('k-active-d').className='kpi-delta up';
+    document.getElementById('k-sal').textContent='$93.8K';
+    document.getElementById('k-sal-d').textContent='Avg across all depts';
+    document.getElementById('k-term').textContent='18.0%';
+    document.getElementById('k-term-d').textContent='↓ Marketing highest 21.4%';
+    document.getElementById('k-term-d').className='kpi-delta dn';
+    document.getElementById('k-perf').textContent='702';
+    document.getElementById('k-perf-d').textContent='↑ Excellent + Outstanding';
+  } else {
+    const s=ALL_DATA.status[dept];
+    const p=ALL_DATA.perf[dept];
+    const total=s.ACTIVE+s.CONTRACT+s.ON_LEAVE+s.INACTIVE+s.TERMINATED;
+    const topPerf=p.OUTSTANDING+p.EXCELLENT;
+    const tRate=((s.TERMINATED/total)*100).toFixed(1);
+    document.getElementById('k-head').textContent=total;
+    document.getElementById('k-head-d').textContent=dept;
+    document.getElementById('k-head-d').className='kpi-delta nu';
+    document.getElementById('k-active').textContent=s.ACTIVE;
+    document.getElementById('k-active-d').textContent='↑ '+((s.ACTIVE/total)*100).toFixed(1)+'% active';
+    document.getElementById('k-active-d').className='kpi-delta up';
+    document.getElementById('k-sal').textContent=fmt(ALL_DATA.salary[dept]||0);
+    document.getElementById('k-sal-d').textContent='Dept avg salary';
+    document.getElementById('k-term').textContent=tRate+'%';
+    document.getElementById('k-term-d').textContent='↓ Termination rate';
+    document.getElementById('k-term-d').className='kpi-delta dn';
+    document.getElementById('k-perf').textContent=topPerf;
+    document.getElementById('k-perf-d').textContent='↑ Top performers';
+  }
+}
+
+function setDept(dept,btn){
+  document.querySelectorAll('.dept-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const label=dept==='ALL'?'All departments':dept;
+  document.getElementById('hc-sub').textContent=label+' — employee distribution';
+  document.getElementById('status-sub').textContent=label+' — status breakdown';
+  document.getElementById('perf-sub').textContent=label+' — rating breakdown';
+  document.getElementById('table-sub').textContent=label+' — key metrics';
+  updateKPIs(dept);
+  buildHeadcount(dept);
+  buildStatus(dept);
+  buildPerfBars(dept);
+  buildTable(dept);
+}
+
+buildHeadcount('ALL');
+buildStatus('ALL');
+buildPerfBars('ALL');
+buildSalBars();
+buildHireTrend();
+buildTermChart();
+buildPerfDeptChart();
+buildTable('ALL');
+updateKPIs('ALL');
+</script>
+</body>
+</html>
